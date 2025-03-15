@@ -1,5 +1,3 @@
-# CDN77-task
-
 ## Needed to research for part 1 of the task, TLDR:
 
 Authoritative DNS server -> the final DNS server that is able to return the right answer unlike recursive DNS resolver, which might not have it cached and ask other recursive <br> 
