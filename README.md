@@ -7,3 +7,16 @@ DNS query types -> (type A means IPv4 address is returned + IPv6 ECS -> request 
 PoP -> point of presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the right one <br>
 Scope prefix length -> how much of prefix needs to be stored (sent in a response) <br>
 DNS resolver vs DNS authoritative server -> caches and relays answers vs source of truth, owns DNS records <br>
+
+## High level questions:
+
+Why did we choose to solve it this way?<br>
+What did we get stuck at, how did we overcome it? How could it be solved differently?<br>
+How would the solution scale?<br>
+Performance, code maintainability, security...<br>
+What parts of the solution are optimal, which are not?<br>
+What could be imporoved and why not improve it straight up?<br>
+How long did the task take? (research, implementation, debug)<br>
+How did we think about the task?<br>
+What did we come up with and what did we threw away?<br>
+What would we do if it went to production?<br>
