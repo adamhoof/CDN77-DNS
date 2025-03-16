@@ -1,4 +1,4 @@
-## Needed to research for part 1 of the task, TLDR:
+## Needed to research for the DNS part, TLDR:
 
 Authoritative DNS server -> the final DNS server that is able to return the right answer unlike recursive DNS resolver, which might not have it cached and ask other recursive <br> 
 ECS -> Extension Mechanisms for DNS Client Subnet -> extension that contains a part of the client's IP as a part of DNS query <br>
@@ -7,6 +7,11 @@ DNS query types -> (type A means IPv4 address is returned + IPv6 ECS -> request 
 PoP -> point of presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the right one <br>
 Scope prefix length -> how much of prefix needs to be stored (sent in a response) <br>
 DNS resolver vs DNS authoritative server -> caches and relays answers vs source of truth, owns DNS records <br>
+
+## Needed to research for the nginx part, TLDR:
+
+Nginx -> high performance software efficient under heavy load, event driven arch, can function as a web server, reverse proxy with load balancer, cache etc. -> those are configurable
+Forward vs Reverse proxy -> acts on behalf of the client, eg. VPN that hides client IP vs acts on behalf of the server, eg. reverse proxy with load balancing, caching etc.
 
 ## High level questions:
 
