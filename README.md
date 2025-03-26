@@ -5,7 +5,8 @@ ECS -> Extension Mechanisms for DNS Client Subnet -> extension that contains a p
 RFC 7871, Section 7.2.1 -> how ECS requests are processed ((not) implemented functionality) and privacy concerns (how much of the subnet is sent?) <br>
 DNS query types -> (type A means IPv4 address is returned + IPv6 ECS -> request contains client's IPv6 subnet) => query typu A s IPv6 ECS means that the request contains client's IPv6 subnet and the client is requesting IPv4 address <br>
 PoP -> point of presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the right one <br>
-Scope prefix length -> how much of prefix needs to be stored (sent in a response) <br>
+Source prefix length -> how many bits of the original client address did the RR supporting ECS decide to include in the ECS option as it is passed onto the Authoritative DNS (0xmasked IP) <br>
+Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is appliacble to any client within the scope given by the ScPL <br>
 DNS resolver vs DNS authoritative server -> caches and relays answers vs source of truth, owns DNS records <br>
 
 ## Needed to research for the nginx part, TLDR:
