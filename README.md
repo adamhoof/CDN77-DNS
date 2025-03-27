@@ -26,3 +26,7 @@ How long did the task take? (research, implementation, debug)<br>
 How did we think about the task?<br>
 What did we come up with and what did we threw away?<br>
 What would we do if it went to production? -> Proper testing has already taken place on a pre-prod environemnt<br>
+
+## DNS task naive solution, unsatisfactory time complexity O(n):
+- iterate through all of the routing rules
+- find one that matches the incoming ECS IP AND has the longest prefix length
