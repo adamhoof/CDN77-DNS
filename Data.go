@@ -15,7 +15,7 @@ type RuleInfo struct {
 }
 type TrieNode struct {
 	children [2]*TrieNode
-	data     *RuleInfo
+	ruleInfo *RuleInfo
 }
 type Data struct {
 	root *TrieNode
@@ -59,6 +59,7 @@ func validateSubnet(subnet *net.IPNet) error {
 	return nil
 }
 
+// Insert address into our trie, *MSB* order
 func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 
 	if err := validateSubnet(subnet); err != nil {
@@ -81,18 +82,58 @@ func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 		node = node.children[bit]
 	}
 
-	// store the rule data at the node corresponding to the prefix length
-	node.data = &RuleInfo{
+	// store the rule ruleInfo at the node corresponding to the prefix length
+	node.ruleInfo = &RuleInfo{
 		popID: popID,
 		scope: prefixLen,
 	}
 	return nil
 }
 
+func (data *Data) Route(ecs *net.IPNet) (pop uint16, scope int) {
+	var bestPop uint16 = 0
+	var bestScope int = -1
+
+	if data == nil || data.root == nil || ecs == nil {
+		return bestPop, bestScope
+	}
+
+	searchIP := ecs.IP.To16()
+	if searchIP == nil {
+		return bestPop, bestScope
+	}
+
+	currentNode := data.root
+	if currentNode.ruleInfo != nil {
+		bestPop = currentNode.ruleInfo.popID
+		bestScope = currentNode.ruleInfo.scope
+	}
+
+	for i := 0; i < 128; i++ {
+		if currentNode.ruleInfo != nil {
+			bestPop = currentNode.ruleInfo.popID
+			bestScope = currentNode.ruleInfo.scope
+		}
+
+		bit, err := getBit(searchIP, uint8(i))
+		if err != nil {
+			fmt.Println(err)
+			return bestPop, bestScope
+		}
+
+		// avoid pointing to nil if we hit the end
+		if currentNode.children[bit] == nil {
+			return bestPop, bestScope
+		}
+		currentNode = currentNode.children[bit]
+	}
+	return bestPop, bestScope
+}
+
 func (data *Data) LoadRoutingData(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
-		return fmt.Errorf("failed to open routing data file '%s': %w", filename, err)
+		return fmt.Errorf("failed to open routing ruleInfo file '%s': %w", filename, err)
 	}
 	defer file.Close()
 
@@ -133,7 +174,7 @@ func (data *Data) LoadRoutingData(filename string) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading routing data file '%s': %w", filename, err)
+		return fmt.Errorf("error reading routing ruleInfo file '%s': %w", filename, err)
 	}
 
 	return nil
