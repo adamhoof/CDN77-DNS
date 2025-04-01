@@ -23,22 +23,27 @@ DNS resolver vs DNS authoritative server -> caches and relays answers vs source 
 Core -> addresses repeat a lot and storing each will create a lot of redundancy, looks like a tree of some sort (this is definitely more space efficient, but let's see time complexity)
 
 1. How to split the address into nodes? -> store numbers in each node to represent 4 bits of address
-   - issue: This allowed shallow Trie (128 / 4 = 32 levels only at most), 4 children per node BUT did not align with prefix lengths, we would have hard time storing and representing prefixes that are not multiples of 4, like 31
-   - fix: We can store just one bit per node instead of numbers (which makes it into a Binary Trie), aligning with prefix exactly: prefix 31 = trie level 31, much more granular!
+   - Issue: This allowed shallow Trie (128 / 4 = 32 levels only at most), 4 children per node BUT did not align with prefix lengths, we would have hard time storing and representing prefixes that are not multiples of 4, like 31
+   - Solution: We can store just one bit per node instead of numbers (which makes it into a Binary Trie), aligning with prefix exactly: prefix 31 = trie level 31, much more granular!
 2. How to store the PoP ID? -> specific nodes will each either have or not have PoP ID assigned to them as per the routing data example
 3. Space complexity looks good, what about time complexity? -> It will be dependent on the number of levels (prefix length) because of the trie traversal and nothing else, that should be way better than O(n), where n is number of records, we are not even dependent on records number at all!
 4. How will the algorithm work then? -> Hmm, so there is the initial trie build (based on the given routing data) and then the search
    - **Trie build**: We traverse the trie down and build nodes that do not yet exist. If a duplicate path is found, it might be rewritten to simulate updated record? But that is not that important.
      - Hmm, speaking of duplicates, what if we find more specific path (greater prefix) with the same PoP ID, ie. 198? To optimise space, we will probably delete the less specific path? NOO, this would remove a valid path for requests with much less specific prefix, keep it.
    - **Trie search**: We traverse the trie down and along the path until we hit ECS mask, keep track of a node that has PoP ID AND is the most specific == further down the trie == larger prefix. When we hit the last possible one (depth equal to the ECS IP length) we will safely tell the most concrete prefix and return its scope prefix length and PoP ID.
-     - Issue: Wait but if we only traverse until ECS IP mask, we might miss a path that contains this ECS address AND is more specific
-     - Invalid Fix: --FROM FUTURE WRONG MARK--> ECS IP = 4bits:4bits.../50, but path = 4bits:4bits.../90 contains this ECS IP AND is more specific <--FROM FUTURE WRONG MARK-- So we go until the trie offers a path down.
+     - Invalid Issue: Wait but if we only traverse until ECS IP mask, we might miss a path that contains this ECS address AND is more specific
+     - Invalid Solution: --FROM FUTURE WRONG MARK--> ECS IP = 4bits:4bits.../50, but path = 4bits:4bits.../90 contains this ECS IP AND is more specific <--FROM FUTURE WRONG MARK-- So we go until the trie offers a path down.
        - Issue: Wait but this means that when the ECS IP mask ends (it is like a key that guides the path), we have multiple paths to choose from
-       - Fix1: We will need to split at that point, find all, sort, find the most specific one? This means performance hit, but it might be necessary, because if we search just the first path available (using DFS ie) and not all of them, we might choose a prefix that is very broad in the end => not good for the customer!
-       - Fix2: Maybe choose a middle ground solution that tells us "this is specific enough prefix" that will act as a block, where the average case will be searching 1/2 of the paths instead of all of them?
-     - Actual Fix: Hold on, the search might actually work differently and easier ---FIXED WRONG--> /50 contains /90, not reverse, /50 IS BROADER than /90 <---FIXED WRONG-- . When the Authoritative DNS performs the lookup, it takes this ECS IP as a whole key and just follows it down the path, so the 0's will either lead us to nil or to the max, 128 length. 
+       - Solution1: We will need to split at that point, find all, sort, find the most specific one? This means performance hit, but it might be necessary, because if we search just the first path available (using DFS ie) and not all of them, we might choose a prefix that is very broad in the end => not good for the customer!
+       - Solution2: Maybe choose a middle ground solution that tells us "this is specific enough prefix" that will act as a block, where the average case will be searching 1/2 of the paths instead of all of them?
+     - Actual Solution: Hold on, the search might actually work differently and easier ---FIXED WRONG--> /50 contains /90, not reverse, /50 IS BROADER than /90 <---FIXED WRONG--. When the Authoritative DNS performs the lookup, it takes this ECS IP as a whole key and just follows it down the path, so the 0's will either lead us to nil or to the max, 128 length. 
        - Hmm and this actually gives us the time complexity, O(ipv6l), where ipv6l is the length of IPv6 address, that is 128 => O(1), nice
-       - Space complexity looks like O(N*ipv6l), when we consider the worst case, where essentially each rule has its own path of ipv6l = 128. The 128 is a big factor, it could get better probably?
+     - Space complexity looks like O(N*ipv6l), when we consider the worst case, where essentially each rule has its own path of ipv6l = 128 nodes. The 128 is a big factor, it could get better probably?
+       - Issue: Hmmm so if we have 2 paths for rules /40 and /60, there will be 20 redundant nodes not having any PoP ID, serving no purpose. We could just connect /40 to /60, but this would lose accuracy?
+       - Solution: We could store the remaining bits of the address somewhere, perhaps in the end /40 node that connects to the /60, this allows merging the prefix and not losing accuracy
+     - Overlaps as per RFC need to be also solved. Good thing is that if one prefix contains the other and both have same PoP ID (like /20 and /40, PoP 198) our trie automatically finds the best possible PoP ID with prefix because it follows the ECS IP down and notes only the most optimal PoP ID with corresponding scope prefix.
+       - Issue: Overlaps that become problematic are, when one contains the other, but have different PoP IDs -> 2001:2000::/40 229 VS 2001:2000::/20 19. This results in downstream RR cache poisoning and possibly PoP overload.
+       - Solution: This should trigger an error (or split broad prefix), according to the RFC
 
 
 
