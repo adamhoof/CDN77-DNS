@@ -25,6 +25,7 @@ func NewData() *Data {
 	return &Data{root: &TrieNode{}}
 }
 
+// extract a specific bit from a byte
 func getBit(ip net.IP, n uint8) (uint8, error) {
 	const lsbMask uint8 = 1
 	if n >= 128 {
@@ -41,6 +42,7 @@ func getBit(ip net.IP, n uint8) (uint8, error) {
 	return 0, nil
 }
 
+// makes sure that the subnet's mask len is IPv6 and that the address can be written as IPv6
 func validateSubnet(subnet *net.IPNet) error {
 	if subnet == nil {
 		return fmt.Errorf("cannot insert nil subnet")
@@ -59,7 +61,28 @@ func validateSubnet(subnet *net.IPNet) error {
 	return nil
 }
 
-// Insert address into our trie, *MSB* order
+// helper for Insert method to detect overlaps (check nodes below startNode for conflicting PoP IDs)
+func checkDescendantConflicts(startNode *TrieNode, expectedPopID uint16) error {
+	if startNode == nil {
+		return nil
+	}
+
+	for _, child := range startNode.children {
+		if child != nil {
+			// do not skip the children directly
+			if child.ruleInfo != nil && child.ruleInfo.popID != expectedPopID {
+				return fmt.Errorf("found conflicting narrower rule at scope /%d with PoP %d", child.ruleInfo.scope, child.ruleInfo.popID)
+			}
+			// recursively check the subtree
+			if err := checkDescendantConflicts(child, expectedPopID); err != nil {
+				return err // return found error
+			}
+		}
+	}
+	return nil // no conflicts yayyyy
+}
+
+// Insert address into the trie in MSB order with prefix overlap checks
 func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 
 	if err := validateSubnet(subnet); err != nil {
@@ -69,21 +92,45 @@ func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 	prefixLen, _ := subnet.Mask.Size()
 	ip := subnet.IP.To16()
 
-	// traverse the path (prefix length nodes), crete nodes if needed
-	node := data.root
+	// traverse the path, crete nodes if needed
+	currentNode := data.root
 	for i := 0; i < prefixLen; i++ {
+		if currentNode.ruleInfo != nil && currentNode.ruleInfo.popID != popID {
+			// conflict found -> existing broader rule has different PoP ID
+			return fmt.Errorf("conflict: new rule %s/%d (PoP %d) conflicts with broader rule at scope /%d (PoP %d)",
+				subnet.IP, prefixLen, popID,
+				currentNode.ruleInfo.scope, currentNode.ruleInfo.popID)
+		}
+
 		bit, err := getBit(ip, uint8(i))
 		if err != nil {
-			return err
+			return fmt.Errorf("error getting bit %d for ip %v: %w", i, ip, err)
 		}
-		if node.children[bit] == nil {
-			node.children[bit] = &TrieNode{}
+
+		// a common path does not exist yet, create node
+		if currentNode.children[bit] == nil {
+			currentNode.children[bit] = &TrieNode{}
 		}
-		node = node.children[bit]
+		currentNode = currentNode.children[bit]
 	}
 
-	// store the rule ruleInfo at the node corresponding to the prefix length
-	node.ruleInfo = &RuleInfo{
+	if currentNode.ruleInfo != nil && currentNode.ruleInfo.popID != popID {
+		// conflict found -> rule for this prefix exists with a different PoP ID
+		return fmt.Errorf("conflict: rule for exact prefix %s/%d exists with different PoP %d (new PoP %d)",
+			subnet.IP, prefixLen,
+			currentNode.ruleInfo.popID, popID)
+	}
+
+	// check for conflicts below our currentNode
+	if err := checkDescendantConflicts(currentNode, popID); err != nil {
+		// conflict found -> narrower rule below with different PoP ID exists
+		return fmt.Errorf("conflict: new rule %s/%d (PoP %d) conflicts with existing narrower rule: %w",
+			subnet.IP, prefixLen, popID,
+			err)
+	}
+
+	// no conflicts
+	currentNode.ruleInfo = &RuleInfo{
 		popID: popID,
 		scope: prefixLen,
 	}
