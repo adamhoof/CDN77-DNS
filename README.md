@@ -1,26 +1,31 @@
 # DNS task
 
-### TLDR research
+### TLDR research aka what I needed to even start
 
 Authoritative DNS server -> the final DNS server that is able to return the right answer unlike recursive DNS resolver, which might not have it cached and ask other recursive <br>
 ECS -> Extension Mechanisms for DNS Client Subnet -> extension that contains a part of the client's IP as a part of DNS query <br>
 RFC 7871, Section 7.2.1 -> how ECS requests are processed ((not) implemented functionality) and privacy concerns (how much of the subnet is sent?) <br>
-DNS query types -> (type A means IPv4 address is returned + IPv6 ECS -> request contains client's IPv6 subnet) => query typu A s IPv6 ECS means that the request contains client's IPv6 subnet and the client is requesting IPv4 address <br>
-PoP -> point of presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the right one <br>
+"Query typu A s IPv6 ECS" -> DNS type A query means IPv4 address is returned; IPv6 ECS means request contains client's IPv6 subnet) => request contains a portion of a client's IPv6 subnet and the client is requesting IPv4 address <br>
+PoP -> Point of Presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the (typically) closest one <br>
 Source prefix length -> how many bits of the original client address did the RR supporting ECS decide to include in the ECS option as it is passed onto the Authoritative DNS (0xmasked IP) <br>
 Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is appliacble to any client within the scope given by the ScPL <br>
-DNS resolver vs DNS authoritative server -> caches and relays answers vs source of truth, owns DNS records <br>
+DNS resolver VS DNS authoritative server -> caches and relays answers VS source of truth, owns DNS records <br>
 
-### Naive solution, unsatisfactory time complexity O(n), space complexity O(n), (where n is number of routing data entries)
+---
+
+### Naive solution: unsatisfactory time complexity O(n), space complexity O(n), where n is number of routing data entries
 - iterate through all the routing rules
 - find one that matches the incoming ECS IP AND has the longest prefix length
 
-### Optimised solution, satisfactory time complexity
-- build a Binary trie structure, where each level represents a specific bit of address in binary form
-- implement search by traversing the trie down
+---
+
+### Optimised solution: satisfactory time complexity O(ipv6l) = O(1) < O(n), space complexity of O(ipv6l * n), where ipv6l is the length of IPv6 = 128, n is the number of routing data entries
+- build a binary trie structure, where each level represents a specific bit position of an address in binary form and each node at that level represents either 1 or 0 of an address
+- check for overlapping rules according to RFC by throwing an error for DNS server admin to check
+- implement search by traversing the trie down, just following the existing path in the trie
 
 #### Optimised solution thought processes:
-Core -> addresses repeat a lot and storing each will create a lot of redundancy, looks like a tree of some sort (this is definitely more space efficient, but let's see time complexity)
+Core idea -> addresses repeat a lot and storing each will create a lot of redundancy, looks like a tree of some sort (this is definitely more space efficient, but let's see time complexity)
 
 1. How to split the address into nodes? -> store numbers in each node to represent 4 bits of address
    - Issue: This allowed shallow Trie (128 / 4 = 32 levels only at most), 4 children per node BUT did not align with prefix lengths, we would have hard time storing and representing prefixes that are not multiples of 4, like 31
@@ -40,25 +45,28 @@ Core -> addresses repeat a lot and storing each will create a lot of redundancy,
        - Hmm and this actually gives us the time complexity, O(ipv6l), where ipv6l is the length of IPv6 address, that is 128 => O(1), nice
      - Space complexity looks like O(N*ipv6l), when we consider the worst case, where essentially each rule has its own path of ipv6l = 128 nodes. The 128 is a big factor, it could get better probably?
        - Issue: Hmmm so if we have 2 paths for rules /40 and /60, there will be 20 redundant nodes not having any PoP ID, serving no purpose. We could just connect /40 to /60, but this would lose accuracy?
-       - Solution: We could store the remaining bits of the address somewhere, perhaps in the end /40 node that connects to the /60, this allows merging the prefix and not losing accuracy
+       - Solution: We could store the remaining bits of the address somewhere, perhaps in the end /40 node that connects to the /60, this allows merging the prefix and not losing accuracy -> This is pretty hard to pull of, let's leave it for now so that it does not take ages, but we know this is a valid thing to solve in real world scenario.
      - Overlaps as per RFC need to be also solved. Good thing is that if one prefix contains the other and both have same PoP ID (like /20 and /40, PoP 198) our trie automatically finds the best possible PoP ID with prefix because it follows the ECS IP down and notes only the most optimal PoP ID with corresponding scope prefix.
-       - Issue: Overlaps that become problematic are, when one contains the other, but have different PoP IDs -> 2001:2000::/40 229 VS 2001:2000::/20 19. This results in downstream RR cache poisoning and possibly PoP overload.
-       - Solution: This should trigger an error (or split broad prefix), according to the RFC
+       - Issue: Overlaps that become problematic are, when one contains the other, but have different PoP IDs -> 2001:2000::/40 229 VS 2001:2000::/20 19.
+       - Solution: When inserting the rules, this should trigger an error (or split broad prefix), according to the RFC
 
+---
 
+### Even more optimised solution - what did I not implement, what would it improve, why
+- What did I not implement?
+  - Path reduction using Radix Trie
+    - What would it improve? Close to O(n) space complexity would be achieved, because we would reduce the need for redundant nodes that do not represent any {PoP ID;scope prefix length} pair
+    - Why did I not implement it? It would be pretty hard, wanted to show I know it exists and how to approach it
+  - Prefix deaggregation on conflict (RFC standard)
+    - What would it improve? It would allow for dynamic rule modification without the interference of an admin, since conflicting too broad prefixes would be deaggregated into smaller ones
+    - Why did I not implement it? Same as above, very complex task, still wanted to show that I understand it needs to be done and how to approach it
 
-
-# NGINX task
-
-### TLDR research
-
-Nginx -> high performance software efficient under heavy load, event driven arch, can function as a web server, reverse proxy with load balancer, cache etc. -> those are configurable<br>
-Forward vs Reverse proxy -> acts on behalf of the client, eg. VPN that hides client IP vs acts on behalf of the server, eg. reverse proxy with load balancing, caching etc.<br>
+---
 
 # High level questions to answer
 
 Why did we choose to solve it this way?<br>
-What did we get stuck at, how did we overcome it? How could it be solved differently? -> Started with almost no knowledge of some terms, learnt it <br>
+What did we get stuck at, how did we overcome it? How could it be solved differently?
 How would the solution scale?<br>
 Performance, code maintainability, security...<br>
 What parts of the solution are optimal, which are not?<br>
