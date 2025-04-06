@@ -8,8 +8,10 @@ RFC 7871, Section 7.2.1 -> how ECS requests are processed ((not) implemented fun
 "Query typu A s IPv6 ECS" -> DNS type A query means IPv4 address is returned; IPv6 ECS means request contains client's IPv6 subnet) => request contains a portion of a client's IPv6 subnet and the client is requesting IPv4 address <br>
 PoP -> Point of Presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the (typically) closest one <br>
 Source prefix length -> how many bits of the original client address did the RR supporting ECS decide to include in the ECS option as it is passed onto the Authoritative DNS (0xmasked IP) <br>
-Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is appliacble to any client within the scope given by the ScPL <br>
+Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is applicable to any client within the scope given by the ScPL <br>
 DNS resolver VS DNS authoritative server -> caches and relays answers VS source of truth, owns DNS records <br>
+Cache poisoning -> In RR context for example, it's cache becomes poisoned when the RR thinks that ie. PoP ID 10 is correct for the entire /8 prefix, meaning anyone with more specific prefix will receive PoP ID 10 as a result as well. <br>
+RFC conflicts resolution method using "Detect and Error" -> prevents cache poisoning by rejecting conflicting overlapping rules that create ambiguous server responses – like simultaneously having /8 -> PoP A and /16 -> PoP B. This is suboptimal but correct, the broad answers are caused simply by a lack of granular data.
 
 ---
 
@@ -19,7 +21,7 @@ DNS resolver VS DNS authoritative server -> caches and relays answers VS source 
 
 ---
 
-### Optimised solution: satisfactory time complexity O(ipv6l) = O(1) < O(n), space complexity of O(ipv6l * n), where ipv6l is the length of IPv6 = 128, n is the number of routing data entries
+### Optimised solution: satisfactory time complexity O(ipv6l) = O(1) < O(n), space complexity O(ipv6l * n), where ipv6l is the length of IPv6 address = 128, n is the number of routing data entries
 - build a binary trie structure, where each level represents a specific bit position of an address in binary form and each node at that level represents either 1 or 0 of an address
 - check for overlapping rules according to RFC by throwing an error for DNS server admin to check
 - implement search by traversing the trie down, just following the existing path in the trie
