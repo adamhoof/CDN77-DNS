@@ -54,14 +54,14 @@ Core idea -> addresses repeat a lot and storing each will create a lot of redund
 
 ---
 
-### Even more optimised solution - what did I not implement, what would it improve, why
+### Even more optimised solution - what/why did I not implement, what would it improve
 - What did I not implement?
   - Path reduction using Radix Trie
     - What would it improve? Close to O(n) space complexity would be achieved, because we would reduce the need for redundant nodes that do not represent any {PoP ID;scope prefix length} pair
-    - Why did I not implement it? It would be pretty hard, wanted to show I know it exists and how to approach it
+    - Why did I not implement it? It would be pretty hard, wanted to show I know it could be done to optimise further and how to approach it
   - Prefix deaggregation on conflict (RFC standard)
     - What would it improve? It would allow for dynamic rule modification without the interference of an admin, since conflicting too broad prefixes would be deaggregated into smaller ones
-    - Why did I not implement it? Same as above, very complex task, still wanted to show that I understand it needs to be done and how to approach it
+    - Why did I not implement it? This one is a problem of not very granular routing data and is very performance hungry, so it would need to be evaluated whether it is not easier to present more granular data in the first place. Otherwise, same as above, very complex task, still wanted to show that I understand it would be done to optimise further in appropriate situations and how to approach it
 
 ---
 
