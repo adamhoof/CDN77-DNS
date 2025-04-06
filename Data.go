@@ -61,7 +61,7 @@ func validateSubnet(subnet *net.IPNet) error {
 	return nil
 }
 
-// helper for Insert method to detect overlaps (check nodes below startNode for conflicting PoP IDs)
+// helper for insert method to detect overlaps (check nodes below startNode for conflicting PoP IDs)
 func checkDescendantConflicts(startNode *TrieNode, expectedPopID uint16) error {
 	if startNode == nil {
 		return nil
@@ -82,8 +82,19 @@ func checkDescendantConflicts(startNode *TrieNode, expectedPopID uint16) error {
 	return nil // no conflicts yayyyy
 }
 
-// Insert address into the trie in MSB order with prefix overlap checks
-func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
+// eg. to insert 192.168.0.0/8 ppid:8 VS 192.0.0.0/8 ppid:111 exists
+func checkSameNodeConflict(node *TrieNode, prefixLen int, subnetIP net.IP, popID uint16) error {
+	if node.ruleInfo != nil && node.ruleInfo.popID != popID {
+		// conflict found -> rule for this prefix exists with a different PoP ID
+		return fmt.Errorf("conflict: rule for exact prefix %s/%d exists with different PoP %d (new PoP %d)",
+			subnetIP, prefixLen, // Pass IP/len for better error message
+			node.ruleInfo.popID, popID)
+	}
+	return nil // No conflict
+}
+
+// insert address into the trie in MSB order with prefix overlap checks
+func (data *Data) insert(subnet *net.IPNet, popID uint16) error {
 
 	if err := validateSubnet(subnet); err != nil {
 		return err
@@ -95,8 +106,9 @@ func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 	// traverse the path, crete nodes if needed
 	currentNode := data.root
 	for i := 0; i < prefixLen; i++ {
+		// ancestor conflicts check
 		if currentNode.ruleInfo != nil && currentNode.ruleInfo.popID != popID {
-			// conflict found -> existing broader rule has different PoP ID
+			// conflict found -> broader rule with different PoP ID exists
 			return fmt.Errorf("conflict: new rule %s/%d (PoP %d) conflicts with broader rule at scope /%d (PoP %d)",
 				subnet.IP, prefixLen, popID,
 				currentNode.ruleInfo.scope, currentNode.ruleInfo.popID)
@@ -114,16 +126,13 @@ func (data *Data) Insert(subnet *net.IPNet, popID uint16) error {
 		currentNode = currentNode.children[bit]
 	}
 
-	if currentNode.ruleInfo != nil && currentNode.ruleInfo.popID != popID {
-		// conflict found -> rule for this prefix exists with a different PoP ID
-		return fmt.Errorf("conflict: rule for exact prefix %s/%d exists with different PoP %d (new PoP %d)",
-			subnet.IP, prefixLen,
-			currentNode.ruleInfo.popID, popID)
+	if err := checkSameNodeConflict(currentNode, prefixLen, subnet.IP, popID); err != nil {
+		// conflict found -> rule with this exact prefix exists with a different PoP ID
+		return err
 	}
 
-	// check for conflicts below our currentNode
 	if err := checkDescendantConflicts(currentNode, popID); err != nil {
-		// conflict found -> narrower rule below with different PoP ID exists
+		// conflict found -> narrower rule with different PoP ID exists
 		return fmt.Errorf("conflict: new rule %s/%d (PoP %d) conflicts with existing narrower rule: %w",
 			subnet.IP, prefixLen, popID,
 			err)
@@ -215,7 +224,7 @@ func (data *Data) LoadRoutingData(filename string) error {
 		}
 		popID := uint16(popIDUint64)
 
-		if err := data.Insert(ipNet, popID); err != nil {
+		if err := data.insert(ipNet, popID); err != nil {
 			return fmt.Errorf("error inserting rule (%s %d): %w", cidrStr, popID, err)
 		}
 	}
