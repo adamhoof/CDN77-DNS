@@ -50,7 +50,9 @@ Core idea -> addresses repeat a lot and storing each will create a lot of redund
        - Solution: We could store the remaining bits of the address somewhere, perhaps in the end /40 node that connects to the /60, this allows merging the prefix and not losing accuracy -> This is pretty hard to pull of, let's leave it for now so that it does not take ages, but we know this is a valid thing to solve in real world scenario.
      - Overlaps as per RFC need to be also solved. Good thing is that if one prefix contains the other and both have same PoP ID (like /20 and /40, PoP 198) our trie automatically finds the best possible PoP ID with prefix because it follows the ECS IP down and notes only the most optimal PoP ID with corresponding scope prefix.
        - Issue: Overlaps that become problematic are, when one contains the other, but have different PoP IDs -> 2001:2000::/40 229 VS 2001:2000::/20 19.
-       - Solution: When inserting the rules, this should trigger an error (or split broad prefix), according to the RFC
+       - Solution fork: When inserting the rules, this should trigger an error (or split broad prefix), according to the RFC.
+         - Not selected solution: Prefix deaggregation would violate the requirement for memory efficiency, since a lot of rules would be added as a result of this deaggregation. It is also very performance hungry. 
+         - Selected solution: Detect and Error is much more suitable for this task, since it does not use more memory and during the insertion only goes through the trie to check if conflicting rules exist. 
 
 ---
 
@@ -59,10 +61,6 @@ Core idea -> addresses repeat a lot and storing each will create a lot of redund
   - Path reduction using Radix Trie
     - What would it improve? Close to O(n) space complexity would be achieved, because we would reduce the need for redundant nodes that do not represent any {PoP ID;scope prefix length} pair
     - Why did I not implement it? It would be pretty hard, wanted to show I know it could be done to optimise further and how to approach it
-  - Prefix deaggregation on conflict (RFC standard)
-    - What would it improve? It would allow for dynamic rule modification without the interference of an admin, since conflicting too broad prefixes would be deaggregated into smaller ones
-    - Why did I not implement it? This one is a problem of not very granular routing data and is very performance hungry, so it would need to be evaluated whether it is not easier to present more granular data in the first place. Otherwise, same as above, very complex task, still wanted to show that I understand it would be done to optimise further in appropriate situations and how to approach it
-
 ---
 
 # High level questions to answer
