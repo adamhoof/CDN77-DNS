@@ -1,4 +1,4 @@
-package main
+package naive
 
 import (
 	"bufio"
@@ -9,11 +9,11 @@ import (
 	"strings"
 )
 
-type NaiveData struct {
+type Data struct {
 	Entries []RoutingEntry
 }
 
-func (d *NaiveData) Route(ecs *net.IPNet) (pop uint16, scope int) {
+func (d *Data) Route(ecs *net.IPNet) (pop uint16, scope int) {
 	bestMatchPopID := uint16(0)
 	longestMatchPrefixLen := -1
 
@@ -38,7 +38,7 @@ func (d *NaiveData) Route(ecs *net.IPNet) (pop uint16, scope int) {
 	return bestMatchPopID, longestMatchPrefixLen
 }
 
-func (d *NaiveData) loadRoutingData(filename string) error {
+func (d *Data) LoadRoutingData(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("failed to open routing data file '%s': %w", filename, err)

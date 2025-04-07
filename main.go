@@ -1,18 +1,20 @@
 package main
 
 import (
+	"CDN77-DNS/naive"
+	"CDN77-DNS/optimised"
 	"fmt"
 	"net"
 )
 
 func main() {
-	nd := NaiveData{}
-	err := nd.loadRoutingData("routing-data.txt")
+	nd := naive.Data{}
+	err := nd.LoadRoutingData("routing-data.txt")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	d := NewData()
+	d := optimised.NewData()
 	err = d.LoadRoutingData("routing-data.txt")
 	if err != nil {
 		fmt.Println(err)
