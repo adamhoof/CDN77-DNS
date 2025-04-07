@@ -15,18 +15,26 @@ RFC conflicts resolution method using "Detect and Error" -> prevents cache poiso
 
 ---
 
-### Naive solution: unsatisfactory time complexity O(n), space complexity O(n), where n is number of routing data entries
+### Naive solution
+#### Asymptotic complexities (where n is the number of routing data entries)
+Time complexity: O(n), unsatisfactory <br>
+Space complexity: O(n) <br>
+
 - iterate through all the routing rules
 - find one that matches the incoming ECS IP AND has the longest prefix length
 
 ---
 
-### Optimised solution: satisfactory time complexity O(ipv6l) = O(1) < O(n), space complexity O(ipv6l * n), where ipv6l is the length of IPv6 address = 128, n is the number of routing data entries
+### Optimised solution
+#### Asymptotic complexities (where ipv6l is the length of IPv6 = 128, n is the number of routing data entries)
+Time complexity: O(ipv6l) = O(1) < O(n), satisfactory <br>
+Space complexity: O(ipv6l * n), ok but got worse, improve? <br>
+
 - build a binary trie structure, where each level represents a specific bit position of an address in binary form and each node at that level represents either 1 or 0 of an address
 - check for overlapping rules according to RFC by throwing an error for DNS server admin to check
 - implement search by traversing the trie down, just following the existing path in the trie
 
-#### Optimised solution thought processes:
+#### Thought processes (literary):
 Core idea -> addresses repeat a lot and storing each will create a lot of redundancy, looks like a tree of some sort (this is definitely more space efficient, but let's see time complexity)
 
 1. How to split the address into nodes? -> store numbers in each node to represent 4 bits of address
@@ -51,16 +59,31 @@ Core idea -> addresses repeat a lot and storing each will create a lot of redund
      - Overlaps as per RFC need to be also solved. Good thing is that if one prefix contains the other and both have same PoP ID (like /20 and /40, PoP 198) our trie automatically finds the best possible PoP ID with prefix because it follows the ECS IP down and notes only the most optimal PoP ID with corresponding scope prefix.
        - Issue: Overlaps that become problematic are, when one contains the other, but have different PoP IDs -> 2001:2000::/40 229 VS 2001:2000::/20 19.
        - Solution fork: When inserting the rules, this should trigger an error (or split broad prefix), according to the RFC.
-         - Not selected solution: Prefix deaggregation would violate the requirement for memory efficiency, since a lot of rules would be added as a result of this deaggregation. It is also very performance hungry. 
-         - Selected solution: Detect and Error is much more suitable for this task, since it does not use more memory and during the insertion only goes through the trie to check if conflicting rules exist. 
+         - Not selected solution: Prefix deaggregation would violate the requirement for memory efficiency, since a lot of rules would be added as a result of this deaggregation. It is also very performance hungry to detect and correct these conflicts!
+         - Selected solution: Detect and Error is much more suitable for this task, since it does not use more memory and during the insertion only goes through the trie to check if conflicting rules exists (either broader, exact or narrower rule exists that would be conflicting). 
 
 ---
 
-### Even more optimised solution - what/why did I not implement, what would it improve
-- What did I not implement?
-  - Path reduction using Radix Trie
-    - What would it improve? Close to O(n) space complexity would be achieved, because we would reduce the need for redundant nodes that do not represent any {PoP ID;scope prefix length} pair
-    - Why did I not implement it? It would be pretty hard, wanted to show I know it could be done to optimise further and how to approach it
+### Even more optimised solution (NOT IMPLEMENTED)
+#### Asymptotic complexities (where ipv6l is the length of IPv6 = 128, n is the number of routing data entries)
+Time complexity: O(ipv6l) = O(1) < O(n), satisfactory <br>
+Space complexity: O(n), improved, probably can not be better <br>
+
+#### Thought process (literary):
+Core idea -> take the binary trie and transform it into binary radix trie - adds path compression. As addressed in the optimised solution, it will avoid creating redundant nodes not representing any PoP ID x prefix length rules, like the ones between /40 and /60 prefixes. 
+
+1. Rethink node/data Storage:
+   - Issue: Path compression (connecting /40 to /60 directly) would lose bit info.
+   - Solution: The compression nodes store info about the edge ->leading<- to them (the sequence of bits and its length), something like edge.bits []byte, edge.length uint8.
+2. Let's think of some scenarios, how it would be inserted.
+   - Path does not exist at all -> We insert at /40, then attempt /60. This works, we detect nil pointer at children.[next_bit] and just connect the /60 node directly, store the bits into edge.bits of this /60 child node.
+   - Path exists via a child -> We attempt to insert new rule.
+     - Issue: Now we do not have a chain of nodes and can't just follow the path and insert the rule at position (ie. wanna insert /50, but /40 -> /60 directly connected).
+     - Solution fork: Compare the new prefix bits (from current depth) with the existing child edge bits. 
+       - Fork1: Matches directly the whole prefix -> (/50 wants to be inserted, we have /40 -> /60, everything is ok until /50) -> New node will be created containing the rule. /40 parent will point to this node, this node will point to the /60 child. 
+       - Fork2: Stops matching somewhere in the process -> (/50 wants to be inserted, we have /40 -> /60, but it breaks at /45 ie.) -> We need to split the edge, so /40 -> /45 -> /50 -> /60 will be the result.
+       - Fork3: The new rule is longer (/70 wants to be inserted, but we have /40 -> /60), we will add it after the last node in the chain.
+       
 ---
 
 # High level questions to answer
