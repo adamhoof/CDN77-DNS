@@ -50,7 +50,7 @@ func validateSubnet(subnet *net.IPNet) error {
 	// make sure the mask is IPv6 (rule out IPv4 mask sizes)
 	prefixLen, maskMaxBits := subnet.Mask.Size()
 	if maskMaxBits != 128 {
-		return fmt.Errorf("expected IPv6 subnet, got /%d with %d bits", prefixLen, maskMaxBits)
+		return fmt.Errorf("expected IPv6 subnet mask, got /%d with %d bits", prefixLen, maskMaxBits)
 	}
 
 	// convert IP to 16 byte form if needed (this can convert IPv4 into IPv6 if mask size is valid for IPv6)
