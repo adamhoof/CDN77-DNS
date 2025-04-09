@@ -1,5 +1,8 @@
 # DNS task
 
+[![CI Pipeline Status](https://github.com/adamhoof/CDN77-DNS/actions/workflows/CI_pipeline.yaml/badge.svg)](https://github.com/adamhoof/CDN77-DNS/actions/workflows/CI_pipeline.yaml)
+
+
 **Contents** <br>
 [TLDR Research](#tldr-research) <br>
 [Naive solution](#naive-solution) <br>
