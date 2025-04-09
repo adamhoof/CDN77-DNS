@@ -1,0 +1,32 @@
+name: CI pipeline
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  ci-steps:
+    name: Build, test, check format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Go setup
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Go format check
+        run: test -z "$(gofmt -l .)" || (echo "Go code is not formatted:" && gofmt -d . && exit 1)
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Run Go tests with Race Detector and Coverage
+        run: go test -v -race ./...
