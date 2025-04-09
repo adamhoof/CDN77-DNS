@@ -160,28 +160,28 @@ func (data *Data) Route(ecs *net.IPNet) (pop uint16, scope int) {
 	}
 
 	currentNode := data.root
+	// check root node
 	if currentNode.ruleInfo != nil {
 		bestPop = currentNode.ruleInfo.popID
 		bestScope = currentNode.ruleInfo.scope
 	}
 
 	for i := 0; i < 128; i++ {
-		if currentNode.ruleInfo != nil {
-			bestPop = currentNode.ruleInfo.popID
-			bestScope = currentNode.ruleInfo.scope
-		}
-
 		bit, err := getBit(searchIP, uint8(i))
 		if err != nil {
 			fmt.Println(err)
 			return bestPop, bestScope
 		}
 
-		// avoid pointing to nil if we hit the end
 		if currentNode.children[bit] == nil {
 			return bestPop, bestScope
 		}
 		currentNode = currentNode.children[bit]
+
+		if currentNode.ruleInfo != nil {
+			bestPop = currentNode.ruleInfo.popID
+			bestScope = currentNode.ruleInfo.scope
+		}
 	}
 	return bestPop, bestScope
 }
@@ -215,7 +215,7 @@ func (data *Data) LoadRoutingData(filename string) error {
 
 		_, ipNet, err := net.ParseCIDR(cidrStr)
 		if err != nil {
-			return fmt.Errorf("failed to parse ECS IP '%s': %w", cidrStr, err)
+			return fmt.Errorf("failed to parse CIDR '%s': %w", cidrStr, err)
 		}
 
 		popIDUint64, err := strconv.ParseUint(popIDStr, 10, 16)
