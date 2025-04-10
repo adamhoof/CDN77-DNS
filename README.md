@@ -41,17 +41,17 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
 
 ### Main ideas
   - Core -> addresses repeat a lot and storing each will create a lot of redundancy in searching and space, looks like a tree of some sort (the lookup in trees is definitely more efficient if designed carefully).
-  - build a binary trie structure, where each level represents a specific bit position of an address in binary form and each node at that level represents either 1 or 0 of an address
+  - build a binary trie structure, where each level represents a specific bit position of an address in binary form and each node at that level represents either 1 or 0 of an address.
   - check for overlapping rules according to RFC by throwing an error for DNS server admin to check
-  - implement search by traversing the trie down, just following the existing path in the trie
+  - implement search by traversing the trie down, just following the existing path in the trie.
 
 ### Thought processes (literary):
 1. **How to split the address into nodes?** -> store numbers in each node to represent 4 bits of address
-   - Issue: This allowed shallow Trie (128 / 4 = 32 levels only at most), 4 children per node BUT did not align with prefix lengths, we would have hard time storing and representing prefixes that are not multiples of 4, like 31
+   - Issue: This allowed shallow Trie (128 / 4 = 32 levels only at most), 4 children per node BUT did not align with prefix lengths, we would have hard time storing and representing prefixes that are not multiples of 4, like 31.
    - Solution: We can store just one bit per node instead of numbers (which makes it into a binary trie), aligning with prefix exactly: prefix 31 = trie level 31, much more granular!
-2. **How to store the PoP ID?** -> specific nodes will each either have or not have PoP ID assigned to them as per the routing data example
+2. **How to store the PoP ID?** -> specific nodes will each either have or not have PoP ID assigned to them as per the routing data example.
 3. **Approximate time complexity of search (route)?** -> It will be dependent on the trie depth (max 128), because of the trie traversal, that should be way better than O(n), where n is number of records, we are not even dependent on records number at all!
-4. **How will it work then?** -> Hmm, so there is the initial trie build (based on the given routing data) and then the search (route)
+4. **How will it work then?** -> Hmm, so there is the initial trie build (based on the given routing data) and then the search (route).
    - **Trie build**: Traverse the trie down and build nodes that do not yet exist, connecting to the existing ones (pointer). Each node will point to max 2 child nodes (binary trie), representing either 1 or 0 of the address.
      - Partially overlapping paths?
        - Issue: What if we find more specific path (greater prefix) with the same PoP ID, ie. 198? To optimise space, we will probably delete the less specific path?
@@ -64,14 +64,16 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
          - Solution fork: When inserting the rules, this should trigger an error (or split broad prefix), according to the RFC.
              - Fork1 (not selected solution): Prefix deaggregation would violate the requirement for memory efficiency, since a lot of rules would be added as a result of prefix deaggregation. It is also very performance hungry to detect and correct these conflicts!
              - Fork2 (selected solution): Detect and Error is much more suitable for this task, since it does not use more memory and during the insertion only goes through the trie to check if conflicting rules exists (either broader, exact or narrower rule exists relative to the inserted one, that would be conflicting).
-   - **Trie search**: Incorrect assumption: We traverse the trie down along a path defined by ECS IP. Keep track of a node that HAS {PoP ID x scope prefix length} AND is the most the specific => further down the trie => larger prefix. When we hit the last possible one defined by ==from future wrong==>> ECS IP mask<<==from future wrong== we will tell the most concrete prefix and return its scope prefix length and PoP ID.
-     - Issue: Wait but if we only traverse until ECS IP mask, we might miss a path that contains this ECS address AND is more specific
-     - Invalid Solution: ECS IP = 4bits:4bits.../50, but path = 4bits:4bits.../90 ==from future wrong==>> contains ECS IP AND is more specific <==from future wrong==.
-       - Issue: Wait but this means that when the ECS IP mask ends, we have multiple paths to choose from going forward
+   - **Trie search**:
+   - Incorrect assumption: We traverse the trie down along a path defined by ECS IP ==from future wrong==>> until we hit ECS IP mask <<==from future wrong==. Keep track of a node that HAS {PoP ID x scope prefix length} AND is the most the specific => further down the trie => larger prefix. Return scope prefix length and PoP ID.
+     - Issue: Wait but if we only traverse until ECS IP mask, we might miss a path that contains this ECS address AND is more specific.
+     - Invalid Solution:
+       - Issue: This means that when the ECS IP mask ends, we have multiple paths to choose from going forward.
+       - Invalid assumption: ECS IP = 4bits:4bits.../50, path = 4bits:4bits.../90 ==from future wrong==>> contains ECS IP AND is more specific <==from future wrong==.
        - Solution1: We will need to split at that point, find all, sort, find the most specific one? This means performance hit, but it might be necessary, because if we search just the first path available (using DFS ie) and not all of them, we might choose a prefix that is very broad in the end => not good for the customer!
        - Solution2: Maybe choose a middle ground solution that tells us "this is specific enough prefix" that will act as a block, where the average case will be searching 1/2 of the paths instead of all of them?
-     - Actual Solution: Hold on, the search might actually work differently and easier ==fixed wrong==> /50 contains /90, not reverse, /50 IS BROADER than /90 <==fixed wrong==. When the Authoritative DNS performs the lookup, it takes this ECS IP like a key and just follows it down the path. 
-       - Hmm and this actually gives us the time complexity, O(ipv6l), where ipv6l is the length of IPv6 address, that is 128 => O(1), nice
+     - Actual Solution: Hold on, the search might actually work differently and easier ==fixed wrong==> /50 contains /90, not reverse, /50 IS BROADER than /90 <==fixed wrong==. When performing the search, follow the ECS IP like a key down the trie. 
+       - Hmm and this actually gives us the time complexity, O(ipv6l), where ipv6l is the length of IPv6 address, that is 128 => O(1), nice.
 
 ## Even more optimised solution (not implemented)
 ### Asymptotic complexities (where n is the number of routing data entries, ipv6l is the bit length of IPv6 = 128)
