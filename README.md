@@ -25,8 +25,6 @@ Cache poisoning -> In ECS context for example, RR's cache becomes poisoned when 
 RFC conflicts resolution method: Detect and Error -> reject conflicting overlapping rules that create ambiguous server responses, like simultaneously having /8 -> PoP 5 and /16 -> PoP 10. The order of requests unfortunately determines, whether the more specific or broader rule becomes cached. This is suboptimal but correct (Authoritative DNS server is consistent), these issues are caused simply by the lack of granular data. <br>
 RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rule (eg. /8, PoP 5) with multiple smaller non-overlapping prefixes that cover the broad rule range except for the area of the conflicting narrower rule (eg. /16, PoP 10).
 
----
-
 ## Naive solution
 ### Asymptotic complexities (where n is the number of routing data entries)
 **Time complexity**: O(n), unsatisfactory <br>
@@ -35,8 +33,6 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
 ### Main ideas
 - iterate through all the routing data
 - find one that matches the incoming ECS IP AND is the most specific
-
----
 
 ## Optimised solution
 ### Asymptotic complexities (where n is the number of routing data entries, ipv6l is the bit length of IPv6 = 128)
@@ -76,7 +72,6 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
        - Solution2: Maybe choose a middle ground solution that tells us "this is specific enough prefix" that will act as a block, where the average case will be searching 1/2 of the paths instead of all of them?
      - Actual Solution: Hold on, the search might actually work differently and easier ---FIXED WRONG--> /50 contains /90, not reverse, /50 IS BROADER than /90 <---FIXED WRONG--. When the Authoritative DNS performs the lookup, it takes this ECS IP as a whole key and just follows it down the path, so the 0's will either lead us to nil or to the max, 128 length. 
        - Hmm and this actually gives us the time complexity, O(ipv6l), where ipv6l is the length of IPv6 address, that is 128 => O(1), nice
----
 
 ## Even more optimised solution (not implemented)
 ### Asymptotic complexities (where n is the number of routing data entries, ipv6l is the bit length of IPv6 = 128)
@@ -99,14 +94,11 @@ Core idea -> take the binary trie and transform it into binary radix trie - adds
        - Fork3: The new rule is longer (/70 wants to be inserted, but we have /40 -> /60), we will add it after the last node in the chain.
 3. **Trie search**:
    - Now that we have a complete binary radix trie, the lookup should not be super hard. We only need to account for the fact that nodes now store skipped bits, against which we need to check instead of just following the path of single bit child pointers.
-       
----
 
 ## CI pipeline
 
 **Dir**: .github/workflows <br> 
 **TLDR** description: Using simple GitHub Actions workflow to automatically check code formatting with gofmt, build the project and run all tests whenever code is pushed to the master branch or a pull request targeting master is updated.
----
 
 ## Approximate time requirements:
 **Research** (topics, terms): 2h <br>
