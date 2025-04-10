@@ -81,9 +81,9 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
 **Space complexity**: O(n), improved, probably can not be better <br><br>
 
 ### Main ideas
-- Core -> take the binary trie and transform it into binary radix trie - adds path compression
-- Avoid creating redundant nodes not representing any PoP ID x scope prefix length rules, like the ones between /40 and /60 prefixes.<br><br>
-- Search (route) needs to account for the fact that we store skipped bits
+- Core -> take the binary trie and transform it into binary radix trie - adds path compression <br>
+- Avoid creating redundant nodes not representing any PoP ID x scope prefix length rules, like the ones between /40 and /60 prefixes. <br>
+- Search (route) needs to account for the fact that we store skipped bits <br>
   
 ### Thought process (literary):
 1. **Rethink node/data storage**:
@@ -98,7 +98,7 @@ RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rul
        - Fork2: Stops matching somewhere in the process -> (/50 wants to be inserted, we have /40 -> /60, but it breaks at /45 ie.) -> We need to split the edge, so /40 -> /45 -> /50 -> /60 will be the result.
        - Fork3: The new rule is longer (/70 wants to be inserted, but we have /40 -> /60), we will add it after the last node in the chain.
 3. **Trie search**:
-   - Now that we have a complete binary radix trie, the lookup should not be super hard. We only need to account for the fact that nodes now store skipped bits, against which we need to check instead of just following the path of single bit child pointers.
+   - We need to account for the fact that nodes now store skipped bits, against which we need to check instead of just following the path of single bit child pointers.
 
 ## CI pipeline
 
