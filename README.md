@@ -98,7 +98,7 @@ Core idea -> take the binary trie and transform it into binary radix trie - adds
 ## CI pipeline
 
 **Dir**: .github/workflows <br> 
-**TLDR** description: Using simple GitHub Actions workflow to automatically check code formatting with gofmt, build the project and run all tests whenever code is pushed to the master branch or a pull request targeting master is updated.
+**TLDR description**: Using simple GitHub Actions workflow to automatically check code formatting with gofmt, build the project and run all tests whenever code is pushed to the master branch or a pull request targeting master is updated.
 
 ## Approximate time requirements:
 **Research** (topics, terms): 2h <br>

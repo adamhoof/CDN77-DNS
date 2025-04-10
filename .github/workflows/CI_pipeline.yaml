@@ -28,5 +28,5 @@ jobs:
       - name: Build
         run: go build -v ./...
 
-      - name: Run Go tests with Race Detector and Coverage
+      - name: Run Go tests with Race Detector
         run: go test -v -race ./...
