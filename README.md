@@ -11,19 +11,19 @@
 [Approximate time requirements](#approximate-time-requirements) <br>
 [CI pipeline](#ci-pipeline)
 
-## TLDR research
+## TLDR
 
-Authoritative DNS server vs recursive resolver -> Authoritative DNS server is the last in the lookup chain that is the owner of DNS records (definitive answers to queries), unlike recursive resolver, which caches these answers and queries other servers. 
-ECS, Extension Mechanisms for DNS Client Subnet -> extension which allows containing a part of the client's IP as a part of DNS query <br>
-RFC 7871, Section 7.2.1 -> details how incoming ECS queries are processed, how to format ECS responses, how to prevent conflicting overlapping rules.
-"Query typu A s IPv6 ECS" -> DNS type A query means IPv4 address is returned; IPv6 ECS means request contains client's IPv6 subnet) => request contains a portion of a client's IPv6 subnet and the client is requesting IPv4 address <br>
-PoP -> Point of Presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the closest one (typically determined by lowest latency) <br>
-Source prefix length -> the number of bits of the client subnet provided by the RR included in ESC option sent to the Authoritative DNS.
-Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is applicable to any client within the scope given by the scope prefix length <br>
-CIDR -> Classless Inter-Domain Routing is a way to represent IP addresses and their prefix in modern networking. More flexible than classful system (A, B, C). Formatted as IP/prefixlen. 
-Cache poisoning -> In ECS context for example, RR's cache becomes poisoned when the RR thinks that ie. PoP ID 10 is correct for the entire /8 prefix, meaning anyone with more specific prefix will receive PoP ID 10 as a result as well. <br>
-RFC conflicts resolution method: Detect and Error -> reject conflicting overlapping rules that create ambiguous server responses, like simultaneously having /8 -> PoP 5 and /16 -> PoP 10. The order of requests unfortunately determines, whether the more specific or broader rule becomes cached. This is suboptimal but correct (Authoritative DNS server is consistent), these issues are caused simply by the lack of granular data. <br>
-RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rule (eg. /8, PoP 5) with multiple smaller non-overlapping prefixes that cover the broad rule range except for the area of the conflicting narrower rule (eg. /16, PoP 10).
+- Authoritative DNS server vs recursive resolver -> Authoritative DNS server is the last in the lookup chain that is the owner of DNS records (definitive answers to queries), unlike recursive resolver, which caches these answers and queries other servers. 
+- ECS, Extension Mechanisms for DNS Client Subnet -> extension which allows containing a part of the client's IP as a part of DNS query <br>
+- RFC 7871, Section 7.2.1 -> details how incoming ECS queries are processed, how to format ECS responses, how to prevent conflicting overlapping rules.
+- "Query typu A s IPv6 ECS" -> DNS type A query means IPv4 address is returned; IPv6 ECS means request contains client's IPv6 subnet) => request contains a portion of a client's IPv6 subnet and the client is requesting IPv4 address <br>
+- PoP -> Point of Presence, CDN server which is picked by DNS server using geolocation data like ECS to identify the closest one (typically determined by lowest latency) <br>
+- Source prefix length -> the number of bits of the client subnet provided by the RR included in ESC option sent to the Authoritative DNS.
+- Scope prefix length -> returned by the Authoritative DNS to the RR to indicate how broadly can the answer be applied -> RR then knows that this answer is applicable to any client within the scope given by the scope prefix length <br>
+- CIDR -> Classless Inter-Domain Routing is a way to represent IP addresses and their prefix in modern networking. More flexible than classful system (A, B, C). Formatted as IP/prefixlen. 
+- Cache poisoning -> In ECS context for example, RR's cache becomes poisoned when the RR thinks that ie. PoP ID 10 is correct for the entire /8 prefix, meaning anyone with more specific prefix will receive PoP ID 10 as a result as well. <br>
+- RFC conflicts resolution method: Detect and Error -> reject conflicting overlapping rules that create ambiguous server responses, like simultaneously having /8 -> PoP 5 and /16 -> PoP 10. The order of requests unfortunately determines, whether the more specific or broader rule becomes cached. This is suboptimal but correct (Authoritative DNS server is consistent), these issues are caused simply by the lack of granular data. <br>
+- RFC conflicts resolution method: Deaggregation -> replaces conflicting broad rule (eg. /8, PoP 5) with multiple smaller non-overlapping prefixes that cover the broad rule range except for the area of the conflicting narrower rule (eg. /16, PoP 10).
 
 ## Naive solution
 ### Asymptotic complexities (where n is the number of routing data entries)
