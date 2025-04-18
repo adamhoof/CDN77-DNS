@@ -4,14 +4,14 @@
 
 
 **Contents** <br>
-[TLDR Research](#tldr-research) <br>
+[Research](#research) <br>
 [Naive solution](#naive-solution) <br>
 [Optimised solution](#optimised-solution) <br>
 [Even more optimised solution](#even-more-optimised-solution-not-implemented) <br>
 [Approximate time requirements](#approximate-time-requirements) <br>
 [CI pipeline](#ci-pipeline)
 
-## TLDR
+## Research
 
 - Authoritative DNS server vs recursive resolver -> Authoritative DNS server is the last in the lookup chain that is the owner of DNS records (definitive answers to queries), unlike recursive resolver, which caches these answers and queries other servers. 
 - ECS, Extension Mechanisms for DNS Client Subnet -> extension which allows containing a part of the client's IP as a part of DNS query <br>
@@ -110,16 +110,3 @@
 **Analysis**: 1h naive + 4h optimised: 5h <br>
 **Documentation** (thought process capture, ideas, research): 4h <br>
 **Implementation**: 1h naive + 7h optimised + 1h tests: 9h <br>
-
-# High level questions to answer
-
-Why did we choose to solve it this way?<br>
-What did we get stuck at, how did we overcome it? How could it be solved differently?
-How would the solution scale?<br>
-Performance, code maintainability, security...<br>
-What parts of the solution are optimal, which are not?<br>
-What could be improved and why not improve it straight up?<br>
-How long did the task take? (research, implementation, debug)<br>
-How did we think about the task?<br>
-What did we come up with and what did we threw away?<br>
-What would we do if it went to production? -> Proper testing has already taken place on a pre-prod environemnt<br>
