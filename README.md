@@ -8,7 +8,7 @@
 [Naive solution](#naive-solution) <br>
 [Optimised solution](#optimised-solution) <br>
 [Even more optimised solution](#even-more-optimised-solution-not-implemented) <br>
-[CI pipeline](#ci-pipeline)
+[CI pipeline](#ci-pipeline) <br>
 [Approximate time requirements](#approximate-time-requirements) <br>
 
 ## Research
